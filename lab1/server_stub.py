@@ -36,20 +36,6 @@ def start_server(host=host, port=port):
         
         
         
-        #old
-        conn, addr = s.accept()
-        with conn:
-            print(f"Connected by {addr}")
-            while True:
-                data = conn.recv(1024)
-                if not data:
-                    break
-                print(f"Received data: {data.decode()}")
-                conn.sendall(data)
-
-
-
-
 # add new connection
 
 def accept_wrapper(sock):

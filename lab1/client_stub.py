@@ -25,7 +25,7 @@ def start_client(host=host, port=port):
 sel = selectors.DefaultSelector()
 messages = [b"Message 1 from client.", b"Message 2 from client."]
 
-def start_connections(host, port, num_conns):
+def start_connections(num_conns, host=host, port=port):
     server_addr = (host, port)
     for i in range(0, num_conns):
         connid = i + 1
@@ -46,6 +46,7 @@ def start_connections(host, port, num_conns):
 # ...
 #main
 #start_client()
+"""
 run=True
 while run:
     print("Client is running. Press Ctrl+C to stop.")
@@ -61,3 +62,4 @@ while run:
         continue
 
 print("Shutting down client.")
+"""
