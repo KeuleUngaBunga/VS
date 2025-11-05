@@ -152,12 +152,6 @@ def main():
     stub = DatastoreStub(client_stub)
 
     try:
-        # Test connection
-        print("Testing connection...")
-        stub.write(0, "connection_test")
-        result = stub.read(0)
-        print(f"✓ Connection successful! Read back: '{result}'")
-
         # Show menu
         print("  1. Interactive mode")
         print("  2. Run benchmark")
