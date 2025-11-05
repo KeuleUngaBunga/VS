@@ -3,7 +3,6 @@ from datastore import Datastore
 
 
 class ServerStub:
-    """Server-side stub for method dispatch"""
 
     def __init__(self, impl: Datastore):
         self.impl = impl
@@ -13,15 +12,7 @@ class ServerStub:
         }
 
     def dispatch(self, request: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Dispatch a request to the appropriate method
 
-        Args:
-            request: The request message
-
-        Returns:
-            Response message
-        """
         request_id = request.get("request_id")
         method_name = request.get("method")
         args = request.get("args", [])
@@ -31,11 +22,10 @@ class ServerStub:
             if method_name not in self.methods:
                 raise ValueError(f"Unknown method: {method_name}")
 
-            # Invoke the method
+            # excecute the method
             method = self.methods[method_name]
             result = method(*args, **kwargs)
 
-            # Create success response
             return {
                 "type": "response",
                 "status": "success",
@@ -44,7 +34,6 @@ class ServerStub:
             }
 
         except Exception as e:
-            # Create error response
             return {
                 "type": "response",
                 "status": "error",

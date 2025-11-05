@@ -7,7 +7,6 @@ from message_serializer import MessageSerializer
 
 
 class ClientStub:
-    """Client-side stub for remote method invocation"""
 
     def __init__(self, host: str, port: int):
         self.host = host
@@ -15,17 +14,15 @@ class ClientStub:
         self.request_counter = 0
         self.sock = None
 
-    def _connect(self) -> None:
-        """Establish connection to server"""
+    def connect(self) -> None:
         if self.sock is None:
             try:
-                self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM) #ipv4 tcp socket
                 self.sock.connect((self.host, self.port))
             except socket.error as e:
                 raise NetworkException(f"Failed to connect to {self.host}:{self.port}: {e}")
 
-    def _disconnect(self) -> None:
-        """Close connection to server"""
+    def disconnect(self) -> None:
         if self.sock:
             try:
                 self.sock.close()
@@ -49,7 +46,7 @@ class ClientStub:
             RemoteException: If remote method raises an exception
             NetworkException: If network communication fails
         """
-        self._connect()
+        self.connect()
 
         try:
             # Create request
@@ -90,7 +87,7 @@ class ClientStub:
 
     def close(self) -> None:
         """Close the connection"""
-        self._disconnect()
+        self.disconnect()
 
 
 class DatastoreStub(Datastore):

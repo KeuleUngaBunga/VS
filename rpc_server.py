@@ -7,7 +7,6 @@ from serverstub import ServerStub
 
 
 class RPCServer:
-    """RPC Server that listens for remote method calls"""
 
     def __init__(self, host: str, port: int, impl: Datastore):
         self.host = host
@@ -16,7 +15,6 @@ class RPCServer:
         self.running = False
 
     def start(self) -> None:
-        """Start the server"""
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
@@ -46,7 +44,6 @@ class RPCServer:
             self.stop()
 
     def _handle_client(self, client_socket: socket.socket, client_addr: tuple) -> None:
-        """Handle a single client connection"""
         try:
             while True:
                 request = MessageSerializer.receive_message(client_socket)
@@ -65,7 +62,6 @@ class RPCServer:
             print(f"Client {client_addr} disconnected")
 
     def stop(self) -> None:
-        """Stop the server"""
         self.running = False
         try:
             self.server_socket.close()

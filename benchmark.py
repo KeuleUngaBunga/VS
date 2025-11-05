@@ -4,11 +4,9 @@ from datastore import Datastore
 
 
 class Benchmark:
-    """Benchmark local vs RPC calls"""
 
     @staticmethod
     def benchmark_local(impl: Datastore, iterations: int = 1000) -> Dict[str, float]:
-        """Benchmark local method calls"""
         times = {
             "write": [],
             "read": []
@@ -32,7 +30,6 @@ class Benchmark:
 
     @staticmethod
     def calculate_stats(times: List[float]) -> Dict[str, float]:
-        """Calculate statistics from timings"""
         if not times:
             return {}
 
