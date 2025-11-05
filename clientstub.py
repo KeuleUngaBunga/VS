@@ -30,26 +30,10 @@ class ClientStub:
                 pass
             self.sock = None
 
-    def invoke(self, method: str, *args, **kwargs) -> Any:
-        """
-        Invoke a remote method
-
-        Args:
-            method: Name of the remote method
-            *args: Positional arguments
-            **kwargs: Keyword arguments
-
-        Returns:
-            Result from remote method
-
-        Raises:
-            RemoteException: If remote method raises an exception
-            NetworkException: If network communication fails
-        """
+    def execute(self, method: str, *args, **kwargs) -> Any:
         self.connect()
 
         try:
-            # Create request
             request_id = self.request_counter
             self.request_counter += 1
 
@@ -61,13 +45,10 @@ class ClientStub:
                 "request_id": request_id
             }
 
-            # Send request
             MessageSerializer.send_message(self.sock, request)
 
-            # Receive response
             response = MessageSerializer.receive_message(self.sock)
 
-            # Handle response
             if response.get("status") == "error":
                 error_msg = response.get("message", "Unknown error")
                 error_type = response.get("error", "RemoteException")
@@ -86,20 +67,16 @@ class ClientStub:
             raise NetworkException(f"Communication error: {e}")
 
     def close(self) -> None:
-        """Close the connection"""
         self.disconnect()
 
 
 class DatastoreStub(Datastore):
-    """Client-side stub for Datastore interface"""
 
     def __init__(self, client_stub: ClientStub):
         self.client_stub = client_stub
 
     def write(self, index: int, data: str) -> None:
-        """Remote write method"""
-        self.client_stub.invoke("write", index, data)
+        self.client_stub.execute("write", index, data)
 
     def read(self, index: int) -> str:
-        """Remote read method"""
-        return self.client_stub.invoke("read", index)
+        return self.client_stub.execute("read", index)
