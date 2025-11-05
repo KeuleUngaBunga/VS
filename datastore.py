@@ -22,6 +22,7 @@ class DatastoreImpl(Datastore):
         if not isinstance(data, str):
             raise ValueError("Data must be a string")
         self.store[index] = data
+        print(f"Data written at index {index}: {data}")
 
     def read(self, index: int) -> str:
         if not isinstance(index, int) or index < 0:
