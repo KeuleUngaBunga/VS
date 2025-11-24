@@ -3,46 +3,46 @@ import rabbitpy
 class node():
     def __init__(self, name):
         self.name = name
-        #self.host = host
         self.connection = rabbitpy.Connection()  # Connect to RabbitMQ server
         self.channel = self.connection.channel()  # Create new channel on the connection
+        # Declare queue with the same name as the node
+        self.queue = rabbitpy.Queue(self.channel, self.name)
+        self.queue.declare()
+        
+        # Declare shared exchange (used by all nodes)
+        self.exchange = rabbitpy.Exchange(self.channel, 'exchange')
+        self.exchange.declare()
 
-    def declare_queue(self):
-        self.queue1 = rabbitpy.Queue(self.channel, self.name)  # Create 1st queue
-        self.queue1.declare()
         
   
-    def produce(self):
-        exchange = rabbitpy.Exchange(self.channel, 'exchange')  # Create an exchange
-        exchange.declare()
-        self.queue1.bind(exchange, 'example-key')  # Bind queue1 to a single key
+    def produce(self,num=1):#1 default 
+        # Bind OWN queue to unique routing key (so messages go to this node's queue)
+        routing_key = f"key_to_{self.name}"
+        self.queue.bind(self.exchange, routing_key)
         
-        # Send messages to both queues
-        test_msg='Test message from '+self.name#test message for Queue 
-
-        message1 = rabbitpy.Message(self.channel, test_msg)
-        message1.publish(exchange, 'example-key')  # Publish to Q1
+        # Send message with routing key
+        msg = 'Message from ' + self.name + ' with number ' + str(num)
+        message = rabbitpy.Message(self.channel, msg)
+        message.publish(self.exchange, routing_key)  # Publish with unique routing key
         
-        print("[Producer] Messages published")
-        #connection.close()
+        print(f"[Producer - {self.name}] Message published to routing key '{routing_key}'")
    
-    def consume(self, node_name):            
-        # Declare queues (same as producer)
-
-        print("[Consumer] Listening for messages...")
-        self.queue2  =  rabbitpy.Queue(self.channel,  node_name)
-    
-        # Fetch messages from Queue 2
-        while len(self.queue2) > 0:
-            message = self.queue2.get()
-            # print both the node name and the message body
-            # using an f-string is simple and readable
-            print(f"Message from {self.name}: {message.body.decode()}")
-            message.ack()
+    def consume(self, queue_name):            
+        """Read messages from another node's queue"""
+        #debug:
+        #print(f"[Consumer - {self.name}] Listening for messages from queue '{queue_name}'...")
         
-        print("[Consumer] Done")
+        # Access another queue by name (it was created by that node)
+        other_queue = rabbitpy.Queue(self.channel, queue_name)
+        
+        # Fetch messages from that queue
+        while len(other_queue) > 0:
+            message = other_queue.get()
+            print(f"[{self.name}] Received: {message.body.decode()}")
+            message.ack()
+        #debug:
+        #print(f"[Consumer - {self.name}] Done")
 
     def close(self):
-        #print("[Node] Closing connection")
         self.connection.close()
-        print("[Node] Closed from "+self.name)
+        print(f"[Node] Closed connection from {self.name}")
