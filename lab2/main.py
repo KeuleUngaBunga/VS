@@ -38,10 +38,11 @@ def main_circular():
     nodes = []
 
     for i in range(num_nodes):# i nodes erstellen und in queue schreiben
-        node = Node.node(name=f"test_node_{i}")
+        node = Node.node(name=f"test_node_{i}",val=nums[i])
         nodes.append(node)
-        node.produce(num=nums[i])
+        node.produce()
     time.sleep(1)  # Ensure messages are published before consuming
+
 
     for i in range(num_nodes):# i nodes konsumieren von i+1 node
         #node = Node.node(name=f"test_node_{i}")
@@ -60,14 +61,14 @@ def main_distributed():
     if ans=="host":
         vals=[]#node values
         host1 = host.Host()
-        print("how many hosts for testing?")
+        print("how many clients for testing?")
         num_hosts = int(input())
         print("how many nodes for testing?")
         num_nodes = int(input())
         for node in range(num_nodes):
             print(f"Enter value for node {node}:")
             vals.append(int(input()))
-        host1.orchestrate(total_nodes=num_nodes,max_clients=num_hosts, node_vals=vals)
+        host1.start(total_nodes=num_nodes,max_clients=num_hosts, node_vals=vals)
         return
     if ans=="client":
         client_id=input("Enter client ID:")

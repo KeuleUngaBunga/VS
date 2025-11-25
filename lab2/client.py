@@ -134,50 +134,47 @@ class Client:
             self.stop()
     
     def run_node_communication(self):
-        """
-        Run circular communication between nodes:
-        - node_i produces to node_(i+1 % total)
-        - Each node receives from node_(i-1 % total)
-        
-        This runs in a loop until interrupted.
-        """
+       
         if not self.node_ids or self.total_nodes is None:
             print(f"[Client {self.client_id}] ERROR: Nodes not ready. Wait for spawn and start commands.")
             return
         
         print(f"[Client {self.client_id}] Starting node communication loop...")
+        self._running = True  # Set flag so the 15s timeout loop runs
         start_time = time.time()
+        node_threads = []
+        
         try:
+            # Start all node threads
+            for node_id in self.node_ids:
+                n = self.nodes[node_id]
+                #---------------------------------------------
+                prev_node_id = node_id - 1
+                if prev_node_id < 0:
+                    prev_node_id = self.total_nodes - 1
+                next_node_id = (node_id + 1)
+                if next_node_id >= self.total_nodes:
+                    next_node_id = 0
+                run_thread = threading.Thread(target=n.run, kwargs={'next_node': f"node_{next_node_id}", 'prev_node': f"node_{prev_node_id}"}, daemon=True)
+                run_thread.start()
+                node_threads.append(run_thread)
+                #----------------------------------------------
+            
+            # Monitor for 10 seconds
             while self._running:
                 crnt_time = time.time()
-                if crnt_time - start_time > 15:  # Run for 30 seconds
-                    print(f"[Client {self.client_id}] Reached 30 seconds of communication. Stopping.")
+                if crnt_time - start_time > 5:  # Run for 10 seconds
+                    print(f"[Client {self.client_id}] Reached 10 seconds of communication. Stopping.")
+                    self._running = False  # Set flag to stop
                     self.close_nodes()
-                    self.stop()
                     break
-                for node_id in self.node_ids:
-                    n = self.nodes[node_id]
-                    
-                    # Produce: send message to next node in circular order
-                    
-                    
-                    # Consume: read from previous and next? node in circular order
-                    
-                    #---------------------------------------------
-                    #prev_node_id= node_id-1
-                    #if(prev_node_id<0):
-                    #    prev_node_id=self.total_nodes-1
-                    next_node_id= (node_id+1)
-                    if(next_node_id>=self.total_nodes):
-                        next_node_id=0
-                    #prev_node_name = f"node_{prev_node_id}"
-                    next_node_name = f"node_{next_node_id}"
-                    #n.consume(prev_node_name)
-                    n.consume(next_node_name)
-                    #ggT=n.get_ggT()
-                    #n.produce(num=ggT)
-                    #----------------------------------------------
-                time.sleep(1)
+                
+                time.sleep(0.5)
+            
+            # Wait for threads with timeout
+            for t in node_threads:
+                t.join(timeout=2)
+                
         except KeyboardInterrupt:
             print(f"[Client {self.client_id}] Communication loop interrupted")
         finally:
@@ -227,23 +224,3 @@ class Client:
             self.stop()
 
 
-def main():
-    import argparse
-    
-    parser = argparse.ArgumentParser(description='RabbitMQ Client for node management')
-    parser.add_argument('--client-id', required=True, help='Unique client ID')
-    parser.add_argument('--host', default='localhost', help='RabbitMQ host')
-    parser.add_argument('--client-queue', help='Queue name for this client (default: client_{client_id})')
-    
-    args = parser.parse_args()
-    
-    client = Client(
-        client_id=args.client_id,
-        host=args.host,
-        client_queue=args.client_queue
-    )
-    client.run()
-
-
-if __name__ == '__main__':
-    main()

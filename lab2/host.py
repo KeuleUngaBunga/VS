@@ -180,7 +180,7 @@ class Host:
             except Exception:
                 pass
     
-    def orchestrate(self, total_nodes, max_clients=1, node_vals=None):
+    def start(self, total_nodes, max_clients=1, node_vals=None):
         """
         Full orchestration: wait for registrations, distribute nodes, spawn, and signal produce.
         

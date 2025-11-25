@@ -1,5 +1,6 @@
 import rabbitpy
 import msg_serializer
+import time
 
 class node():
     def __init__(self, name, val):
@@ -29,12 +30,13 @@ class node():
         message = rabbitpy.Message(self.channel, msg)
         message.publish(self.exchange, routing_key)  # Publish with unique routing key
         
-        print(f"[Producer - {self.name}] Message published ")
+        #debug
+        #print(f"[Producer - {self.name}] Message published ")
    
     def consume(self, queue_name):            
         """Read messages from another node's queue"""
         #debug:
-        #print(f"[Consumer - {self.name}] Listening for messages from queue '{queue_name}'...")
+        print(f"[Consumer - {self.name}] Listening for messages from queue '{queue_name}'...")
         
         # Access another queue by name (it was created by that node)
         other_queue = rabbitpy.Queue(self.channel, queue_name)
@@ -46,12 +48,23 @@ class node():
             if(data.get("type")=="node_message"):
                 val=data.get("value")
                 if val < self.val:
-                    self.val = ((self.val-1)% val) + 1  
+                    self.val = (((self.val-1)% val) + 1)  
                 self.produce()
-                print(f"[{self.name}] Received: {val}")
+                print(f"[{self.name}] Received: {val} from {queue_name}")
             message.ack()
         #debug:
         #print(f"[Consumer - {self.name}] Done")
+
+    def run(self,next_node,prev_node):
+        while True:
+            if next_node == prev_node:
+                self.consume(queue_name=next_node)
+            else:   
+                self.consume(queue_name=prev_node)
+                self.consume(queue_name=next_node)
+            #self.produce()
+            time.sleep(1)  
+
 
     def close(self):
         self.connection.close()
