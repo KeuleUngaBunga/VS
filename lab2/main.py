@@ -1,6 +1,8 @@
 #main
 import Node
 import time
+import host
+import client
 
 def main():
     #simple test with 3 nodes
@@ -25,7 +27,6 @@ def main_circular():
     #test main
     #--------------------------------
     #input
-    print("All nodes have finished processing.")
     print("how many nodes for testing?")
     num_nodes = int(input())
     nums = []
@@ -52,6 +53,26 @@ def main_circular():
         node.close()
     print("All nodes have finished processing.")
 
+def main_distributed():
+    #distributed test with host and clients
+    print("host or client?")
+    ans=str(input())
+    if ans=="host":
+        host1 = host.Host()
+        print("how many hosts for testing?")
+        num_hosts = int(input())
+        print("how many nodes for testing?")
+        num_nodes = int(input())
+        host1.orchestrate(total_nodes=num_nodes,max_clients=num_hosts)
+        return
+    if ans=="client":
+        client_id=input("Enter client ID:")
+        #host_ip=input("Enter host IP (default localhost):")
+        client1 = client.Client(client_id=client_id)
+        client1.run()
+        return
+    
 if __name__ == "__main__":
     #main()
-    main_circular()
+    #main_circular()
+    main_distributed()
