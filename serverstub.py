@@ -1,15 +1,20 @@
-from typing import Any, Dict
+from typing import Any, Callable, Dict
 from datastore import Datastore
 
 
 class ServerStub:
-
     def __init__(self, impl: Datastore):
         self.impl = impl
-        self.methods = {
-            "write": impl.write,
-            "read": impl.read,
-        }
+        self.methods: Dict[str, Callable] = {}
+
+        self.register_method("write", impl.write)
+        self.register_method("read", impl.read)
+
+    def register_method(self, name: str, func: Callable) -> None:
+        if not callable(func):
+            raise ValueError(f"Method {name} is not callable")
+
+        self.methods[name] = func
 
     def dispatch(self, request: Dict[str, Any]) -> Dict[str, Any]:
 
