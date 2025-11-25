@@ -13,6 +13,7 @@ import json
 import time
 import threading
 import rabbitpy
+import msg_serializer
 
 
 class Host:
@@ -25,6 +26,7 @@ class Host:
             mgmt_queue: Queue name for management messages
             total_nodes: Total number of nodes to spawn (can be None, set later)
         """
+        self.decoder = msg_serializer.connect_decoder()
         self.amqp_url = f'amqp://guest:guest@{host}:5672/%2F'
         self.mgmt_queue = mgmt_queue
         self.total_nodes = total_nodes
@@ -59,7 +61,6 @@ class Host:
         """Handle client registration message."""
         client_id = msg_data.get('client_id')
         client_queue = msg_data.get('client_queue')
-        info = msg_data.get('info', {})
         
         if not client_id or not client_queue:
             print("[Host] ERROR: Invalid registration message (missing client_id or client_queue)")
@@ -67,7 +68,6 @@ class Host:
         
         self.registered_clients[client_id] = {
             'queue': client_queue,
-            'info': info
         }
         print(f"[Host] Client registered: {client_id} (queue: {client_queue})")
     
@@ -99,58 +99,38 @@ class Host:
         print(f"[Host] Node distribution complete: {self.total_nodes} nodes across {num_clients} clients")
         return True
     
-    def send_node_spawn_command(self):
+    def send_node_spawn_command(self, node_vals=None):
         """Send node spawn commands to all registered clients."""
         self.distribute_nodes()
         
         for client_id, node_ids in self.node_allocation.items():
             client_info = self.registered_clients[client_id]
             client_queue = client_info['queue']
-            
+            temp_vals = []
+            if node_vals is not None:
+                for nid in node_ids:
+                    temp_vals.append(node_vals[nid])
             # Create spawn command
-            cmd = {
-                'type': 'spawn_nodes',
-                'node_ids': node_ids,
-                'total_nodes': self.total_nodes,
-                'client_id': client_id
-            }
+            
+            cmd = self.decoder.encode_spawn_nodes(
+                client_id=client_id,
+                node_ids=node_ids,
+                node_vals=temp_vals,  
+                total_nodes=self.total_nodes
+            )
             
             # Send to client's queue
-            msg = rabbitpy.Message(self.channel, json.dumps(cmd))
+            msg = rabbitpy.Message(self.channel, cmd)
             msg.publish(self.exchange, client_queue)
             
             print(f"[Host] Sent spawn command to {client_id}: {len(node_ids)} nodes (IDs: {node_ids})")
         
         return True
     
-    def send_start_producing_signal(self):
-        """Signal all clients to start nodes producing messages."""
-        for client_id, client_info in self.registered_clients.items():
-            client_queue = client_info['queue']
-            
-            cmd = {
-                'type': 'start_producing',
-                'total_nodes': self.total_nodes
-            }
-            
-            msg = rabbitpy.Message(self.channel, json.dumps(cmd))
-            msg.publish(self.exchange, client_queue)
-            
-            print(f"[Host] Sent start_producing signal to {client_id}")
-        
-        return True
+
     
     def listen_for_registrations(self, max_clients=1):
-        """
-        Listen for client registrations in a non-blocking loop.
-
-        The function returns when either `duration` seconds have passed (if provided)
-        or when the number of registered clients reaches `max_clients` (if provided).
-
-        Args:
-            max_clients: Maximum number of clients to wait for (None = no limit)
-            duration: Listen for X seconds (None = no timeout)
-        """
+       
         self._setup_rabbitmq()
         self._running = True
 
@@ -167,7 +147,7 @@ class Host:
                 while len(self.queue) > 0:
                     message = self.queue.get()
                     try:
-                        data = json.loads(message.body.decode())
+                        data = self.decoder.decode(message.body)
                         if data.get('type') == 'register':
                             self._handle_registration(data)
                         else:
@@ -200,7 +180,7 @@ class Host:
             except Exception:
                 pass
     
-    def orchestrate(self, total_nodes, max_clients=1):
+    def orchestrate(self, total_nodes, max_clients=1, node_vals=None):
         """
         Full orchestration: wait for registrations, distribute nodes, spawn, and signal produce.
         
@@ -222,16 +202,14 @@ class Host:
             return
                 
         # Send spawn commands
-        if not self.send_node_spawn_command():
+        if not self.send_node_spawn_command(node_vals=node_vals):
             return
         
         time.sleep(2)
         
-        # Signal to start producing
-        if not self.send_start_producing_signal():
-            return
+
         print("end communication?")
-        close=input()
+        #close=input()
         '''
         if close=="close":
             #stop clients
@@ -239,21 +217,3 @@ class Host:
         print("[Host] Orchestration complete. Nodes should now be communicating.")
         '''
 
-def main():
-    import argparse
-    
-    parser = argparse.ArgumentParser(description='RabbitMQ Management Host')
-    parser.add_argument('--host', default='localhost', help='RabbitMQ host')
-    parser.add_argument('--total-nodes', type=int, default=12, help='Total nodes to spawn')
-    parser.add_argument('--registration-wait', type=int, default=10, help='Seconds to wait for registrations')
-    
-    args = parser.parse_args()
-    
-    host = Host(host=args.host, total_nodes=args.total_nodes)
-    host.orchestrate(args.total_nodes, registration_wait_time=args.registration_wait)
-    
-    print("[Host] Exiting.")
-
-
-if __name__ == '__main__':
-    main()

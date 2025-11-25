@@ -14,7 +14,7 @@ import time
 import threading
 import rabbitpy
 import Node
-
+import msg_serializer
 
 class Client:
     def __init__(self, client_id, host='localhost', client_queue=None):
@@ -26,6 +26,7 @@ class Client:
             host: RabbitMQ host
             client_queue: Queue name for this client (default: client_{client_id})
         """
+        self.decoder = msg_serializer.connect_decoder()
         self.client_id = client_id
         self.amqp_url = f'amqp://guest:guest@{host}:5672/%2F'
         self.client_queue = client_queue or f'client_{client_id}'
@@ -65,25 +66,25 @@ class Client:
     def register_with_host(self):
         """Register this client with the host."""
         self._setup_rabbitmq()
-        
-        reg_msg = {
-            'type': 'register',
-            'client_id': self.client_id,
-            'client_queue': self.client_queue,
-            'info': {'registered_at': time.time()}
-        }
-        
-        msg = rabbitpy.Message(self.channel, json.dumps(reg_msg))
-        msg.publish(self.exchange, self.mgmt_queue)
+    
+        msg = self.decoder.encode_register(
+            client_id=self.client_id,
+            client_queue=self.client_queue,
+        )
+        message = rabbitpy.Message(self.channel, msg)
+        message.publish(self.exchange, self.mgmt_queue)
         
         print(f"[Client {self.client_id}] Registration message sent to host")
     
-    def _create_nodes(self, node_ids):
+    def _create_nodes(self, node_ids,node_vals):
         """Create Node objects for assigned node IDs."""
+        i=0
         for node_id in node_ids:
             node_name = f"node_{node_id}"
             try:
-                n = Node.node(name=node_name)
+                n = Node.node(name=node_name, val=node_vals[i])
+                n.produce()
+                i+=1
                 self.nodes[node_id] = n
                 print(f"[Client {self.client_id}] Created node: {node_name}")
             except Exception as e:
@@ -93,20 +94,14 @@ class Client:
         """Handle spawn_nodes command from host."""
         node_ids = cmd.get('node_ids', [])
         self.total_nodes = cmd.get('total_nodes')
-        
+        unique_node_vals = cmd.get('node_vals', [])
         print(f"[Client {self.client_id}] Received spawn command for {len(node_ids)} nodes: {node_ids}")
         self.node_ids = node_ids
-        self._create_nodes(node_ids)
+        self._create_nodes(node_ids,unique_node_vals)
         print(f"[Client {self.client_id}] All nodes created successfully")
         # Signal that spawn has completed
         self.spawn_event.set()
     
-    def _handle_start_producing(self, cmd):
-        """Handle start_producing signal from host."""
-        self.total_nodes = cmd.get('total_nodes')
-        print(f"[Client {self.client_id}] Received start_producing signal. Total nodes: {self.total_nodes}")
-        # Signal that producing may start
-        self.start_event.set()
     
     def listen_for_commands(self):
         """Listen for commands from host (blocking)."""
@@ -118,13 +113,11 @@ class Client:
                 while len(self.queue) > 0:
                     message = self.queue.get()
                     try:
-                        cmd = json.loads(message.body.decode())
+                        cmd = self.decoder.decode(message.body)
                         cmd_type = cmd.get('type')
                         
                         if cmd_type == 'spawn_nodes':
                             self._handle_spawn_nodes(cmd)
-                        elif cmd_type == 'start_producing':
-                            self._handle_start_producing(cmd)
                         else:
                             print(f"[Client {self.client_id}] Unknown command type: {cmd_type}")
                     except json.JSONDecodeError:
@@ -153,27 +146,37 @@ class Client:
             return
         
         print(f"[Client {self.client_id}] Starting node communication loop...")
-        
+        start_time = time.time()
         try:
-            iteration = 0
             while self._running:
-                iteration += 1
-                
+                crnt_time = time.time()
+                if crnt_time - start_time > 15:  # Run for 30 seconds
+                    print(f"[Client {self.client_id}] Reached 30 seconds of communication. Stopping.")
+                    self.close_nodes()
+                    self.stop()
+                    break
                 for node_id in self.node_ids:
                     n = self.nodes[node_id]
                     
                     # Produce: send message to next node in circular order
-                    n.produce(num=iteration)
                     
-                    # Consume: read from previous node in circular order
-                    #if i == num_nodes-1:
-                    #    node.consume(queue_name="test_node_0")
-                    #else:
-                    #    node.consume(queue_name=f"test_node_{i + 1}")
-                    prev_node_id = (node_id - 1) % self.total_nodes
-                    prev_node_name = f"node_{prev_node_id}"
-                    n.consume(prev_node_name)
-                
+                    
+                    # Consume: read from previous and next? node in circular order
+                    
+                    #---------------------------------------------
+                    #prev_node_id= node_id-1
+                    #if(prev_node_id<0):
+                    #    prev_node_id=self.total_nodes-1
+                    next_node_id= (node_id+1)
+                    if(next_node_id>=self.total_nodes):
+                        next_node_id=0
+                    #prev_node_name = f"node_{prev_node_id}"
+                    next_node_name = f"node_{next_node_id}"
+                    #n.consume(prev_node_name)
+                    n.consume(next_node_name)
+                    #ggT=n.get_ggT()
+                    #n.produce(num=ggT)
+                    #----------------------------------------------
                 time.sleep(1)
         except KeyboardInterrupt:
             print(f"[Client {self.client_id}] Communication loop interrupted")
@@ -215,11 +218,6 @@ class Client:
             if not self.node_ids:
                 print(f"[Client {self.client_id}] ERROR: No nodes were spawned")
                 return
-
-            # After spawn, wait for start_producing signal
-            print(f"[Client {self.client_id}] Waiting for start_producing signal from host...")
-            self.start_event.wait()
-
             # Run node communication
             self.run_node_communication()
         

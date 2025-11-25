@@ -58,12 +58,16 @@ def main_distributed():
     print("host or client?")
     ans=str(input())
     if ans=="host":
+        vals=[]#node values
         host1 = host.Host()
         print("how many hosts for testing?")
         num_hosts = int(input())
         print("how many nodes for testing?")
         num_nodes = int(input())
-        host1.orchestrate(total_nodes=num_nodes,max_clients=num_hosts)
+        for node in range(num_nodes):
+            print(f"Enter value for node {node}:")
+            vals.append(int(input()))
+        host1.orchestrate(total_nodes=num_nodes,max_clients=num_hosts, node_vals=vals)
         return
     if ans=="client":
         client_id=input("Enter client ID:")
