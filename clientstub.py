@@ -11,7 +11,6 @@ class ClientStub:
     def __init__(self, host: str, port: int):
         self.host = host
         self.port = port
-        self.request_counter = 0
         self.sock = None
 
     def connect(self) -> None:
@@ -34,8 +33,6 @@ class ClientStub:
         self.connect()
 
         try:
-            self.request_counter += 1
-
             request = {
                 "type": "request",
                 "method": method,
