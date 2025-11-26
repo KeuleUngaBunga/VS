@@ -21,7 +21,6 @@ class ServerStub:
         request_id = request.get("request_id")
         method_name = request.get("method")
         args = request.get("args", [])
-        kwargs = request.get("kwargs", {})
 
         try:
             if method_name not in self.methods:
@@ -29,7 +28,7 @@ class ServerStub:
 
             # excecute the method
             method = self.methods[method_name]
-            result = method(*args, **kwargs)
+            result = method(*args)
 
             return {
                 "type": "response",
