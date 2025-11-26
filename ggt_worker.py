@@ -35,7 +35,6 @@ class GGTProcess:
         self.exchange = None
         
     def setup_rabbitmq(self):
-        """Setup RabbitMQ connection, channel, and queues."""
         try:
             self.connection = rabbitpy.Connection(f'amqp://guest:guest@{self.host}:5672/%2F')
             self.channel = self.connection.channel()
@@ -63,16 +62,6 @@ class GGTProcess:
             raise
  
     def create_message(self, message_type: str, value: int) -> str:
-        """
-        Create a JSON message.
-        
-        Args:
-            message_type: Type of message ('value', 'query', 'result')
-            value: The value to send
-            
-        Returns:
-            JSON-formatted message string
-        """
         message = {
             'type': message_type,
             'sender_id': self.process_id,
@@ -83,15 +72,6 @@ class GGTProcess:
         return json.dumps(message)
 
     def parse_message(self, message_body: str) -> dict:
-        """
-        Parse a JSON message.
-        
-        Args:
-            message_body: JSON message string
-            
-        Returns:
-            Parsed message dictionary
-        """
         try:
             return json.loads(message_body)
         except json.JSONDecodeError as e:
@@ -99,13 +79,6 @@ class GGTProcess:
             return None
 
     def send_to_neighbor(self, neighbor_id: int, message: str):
-        """
-        Send a message to a neighbor.
-        
-        Args:
-            neighbor_id: ID of the neighbor process
-            message: JSON message to send
-        """
         try:
             msg = rabbitpy.Message(self.channel, message)
             msg.properties['content_type'] = 'application/json'
@@ -114,25 +87,12 @@ class GGTProcess:
             logger.error(f'Process {self.process_id}: Failed to send to neighbor {neighbor_id}: {e}')
 
     def send_to_neighbors(self):
-        """Send current M value to both neighbors."""
         message = self.create_message('value', self.M)
         self.send_to_neighbor(self.predecessor_id, message)
         self.send_to_neighbor(self.successor_id, message)
         logger.info(f'Process {self.process_id}: Sent M={self.M} to neighbors')
 
     def process_incoming_message(self, message_dict: dict):
-        """
-        Process an incoming message according to the algorithm.
-        
-        Algorithm:
-        if y < M then
-            M = mod(M - 1, y) + 1
-            send M to all neighbours
-        end
-        
-        Args:
-            message_dict: Parsed message dictionary
-        """
         if message_dict is None or message_dict['type'] != 'value':
             return
         
@@ -151,12 +111,6 @@ class GGTProcess:
             self.unchanged_rounds += 1
 
     def check_messages(self, timeout: float = 0.1):
-        """
-        Non-blocking check for incoming messages.
-        
-        Args:
-            timeout: Timeout for message retrieval in seconds
-        """
         try:
             if len(self.incoming_queue) > 0:
                 message = self.incoming_queue.get()
@@ -171,13 +125,6 @@ class GGTProcess:
             logger.error(f'Process {self.process_id}: Error checking messages: {e}')
 
     def run(self, initial_wait: float = 15.0, max_iterations: int = 1000):
-        """
-        Main loop for the process.
-        
-        Args:
-            initial_wait: Time to wait before sending initial value
-            max_iterations: Maximum number of message checks before stopping
-        """
         try:
             self.setup_rabbitmq()
             
@@ -216,7 +163,6 @@ class GGTProcess:
             self.cleanup()
 
     def cleanup(self):
-        """Clean up RabbitMQ resources."""
         try:
             # if self.incoming_queue:
             #     self.incoming_queue.delete()
@@ -232,7 +178,6 @@ class GGTProcess:
 
 
 def main():
-    """Entry point for worker process."""
     if len(sys.argv) < 5:
         print('Usage: ggt_worker.py <process_id> <initial_value> <predecessor_id> <successor_id> [host]')
         sys.exit(1)
