@@ -18,7 +18,6 @@ class ServerStub:
 
     def dispatch(self, request: Dict[str, Any]) -> Dict[str, Any]:
 
-        request_id = request.get("request_id")
         method_name = request.get("method")
         args = request.get("args", [])
 
@@ -34,7 +33,6 @@ class ServerStub:
                 "type": "response",
                 "status": "success",
                 "result": result,
-                "request_id": request_id
             }
 
         except Exception as e:
@@ -43,5 +41,4 @@ class ServerStub:
                 "status": "error",
                 "error": type(e).__name__,
                 "message": str(e),
-                "request_id": request_id
             }

@@ -34,14 +34,12 @@ class ClientStub:
         self.connect()
 
         try:
-            request_id = self.request_counter
             self.request_counter += 1
 
             request = {
                 "type": "request",
                 "method": method,
                 "args": list(args),
-                "request_id": request_id
             }
 
             MessageSerializer.send_message(self.sock, request)
