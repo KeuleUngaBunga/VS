@@ -1,3 +1,4 @@
+import datetime
 import json
 import sys
 import time
@@ -6,7 +7,7 @@ from typing import Optional
 import rabbitpy
 import rabbitpy.exceptions
 
-from message import MessageParser
+# from message import MessageParser
 
 logging.basicConfig(
     level=logging.INFO,
@@ -36,7 +37,23 @@ class GGTProcess:
         self.incoming_queue = None
         self.exchange = None
         
-        self.message_parser = MessageParser
+        # self.message_parser = MessageParser
+        
+    def create_message(self, message_type: str, value: int) -> str:
+        message = {
+            'type': message_type,
+            'sender_id': self.process_id,
+            'value': value,
+            'timestamp': time.time()
+        }
+        return json.dumps(message)
+
+    def parse_message(self, message_body: str) -> dict:
+        try:
+            return json.loads(message_body)
+        except json.JSONDecodeError as e:
+            logger.error(f'Process {self.process_id}: Failed to parse message: {e}')
+            return None
         
     def setup_rabbitmq(self):
         try:
@@ -74,7 +91,7 @@ class GGTProcess:
             logger.error(f'Process {self.process_id}: Failed to send to neighbor {neighbor_id}: {e}')
 
     def send_to_neighbors(self):
-        message = self.message_parser.create_message('value', self.M)
+        message = self.create_message('value', self.M)
         self.send_to_neighbor(self.predecessor_id, message)
         self.send_to_neighbor(self.successor_id, message)
         logger.info(f'Process {self.process_id}: Sent M={self.M} to neighbors')
@@ -103,7 +120,7 @@ class GGTProcess:
                 message = self.incoming_queue.get()
                 if message:
                     message_body = message.body.decode('utf-8')
-                    message_dict = self.message_parser.parse_message(message_body)
+                    message_dict = self.parse_message(message_body)
                     self.process_incoming_message(message_dict)
                     message.ack()
         # except rabbitpy.exceptions.TimeoutError:
@@ -111,7 +128,7 @@ class GGTProcess:
         except Exception as e:
             logger.error(f'Process {self.process_id}: Error checking messages: {e}')
 
-    def run(self, initial_wait: float = 15.0):
+    def run(self, initial_wait: float = 15.0, convergence_time: int = 60):
     # def run(self, initial_wait: float = 15.0, max_iterations: int = 1000):
         try:
             self.setup_rabbitmq()
@@ -120,6 +137,8 @@ class GGTProcess:
             logger.info(f'Process {self.process_id}: Waiting {initial_wait}s for all processes to start...')
             time.sleep(initial_wait)
             
+            start_time = datetime.datetime.now()  
+            diff_seconds = 0                      
             # Start algorithm by sending initial M to neighbors
             logger.info(f'Process {self.process_id}: Starting algorithm with M={self.M}')
             self.send_to_neighbors()
@@ -129,8 +148,10 @@ class GGTProcess:
             # stable_iterations = 0
             
             # while iteration_count < max_iterations and self.is_running:
-            while self.is_running:
+            while self.is_running and diff_seconds < convergence_time:
                 self.check_messages(timeout=0.1)
+                timestamp = datetime.datetime.now()  
+                diff_seconds = (timestamp - start_time).total_seconds()
                 # iteration_count += 1
                 
                 # Check for convergence (no changes for several iterations)
@@ -153,10 +174,10 @@ class GGTProcess:
 
     def cleanup(self):
         try:
-            # if self.incoming_queue:
-            #     self.incoming_queue.delete()
-            # if self.exchange:
-            #     self.exchange.delete()
+            if self.incoming_queue:
+                self.incoming_queue.delete()
+            if self.exchange:
+                self.exchange.delete()
             if self.channel:
                 self.channel.close()
             if self.connection:
