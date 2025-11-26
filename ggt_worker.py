@@ -6,6 +6,8 @@ from typing import Optional
 import rabbitpy
 import rabbitpy.exceptions
 
+from message import MessageParser
+
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
@@ -23,8 +25,8 @@ class GGTProcess:
         self.host = host
         
         # State tracking
-        self.iteration = 0
-        self.unchanged_rounds = 0
+        # self.iteration = 0
+        # self.unchanged_rounds = 0
         self.last_M = None
         self.is_running = True
         
@@ -33,6 +35,8 @@ class GGTProcess:
         self.channel = None
         self.incoming_queue = None
         self.exchange = None
+        
+        self.message_parser = MessageParser
         
     def setup_rabbitmq(self):
         try:
@@ -60,23 +64,6 @@ class GGTProcess:
         except Exception as e:
             logger.error(f'Process {self.process_id}: RabbitMQ setup failed: {e}')
             raise
- 
-    def create_message(self, message_type: str, value: int) -> str:
-        message = {
-            'type': message_type,
-            'sender_id': self.process_id,
-            'value': value,
-            'iteration': self.iteration,
-            'timestamp': time.time()
-        }
-        return json.dumps(message)
-
-    def parse_message(self, message_body: str) -> dict:
-        try:
-            return json.loads(message_body)
-        except json.JSONDecodeError as e:
-            logger.error(f'Process {self.process_id}: Failed to parse message: {e}')
-            return None
 
     def send_to_neighbor(self, neighbor_id: int, message: str):
         try:
@@ -87,7 +74,7 @@ class GGTProcess:
             logger.error(f'Process {self.process_id}: Failed to send to neighbor {neighbor_id}: {e}')
 
     def send_to_neighbors(self):
-        message = self.create_message('value', self.M)
+        message = self.message_parser.create_message('value', self.M)
         self.send_to_neighbor(self.predecessor_id, message)
         self.send_to_neighbor(self.successor_id, message)
         logger.info(f'Process {self.process_id}: Sent M={self.M} to neighbors')
@@ -106,9 +93,9 @@ class GGTProcess:
             self.M = (self.M - 1) % y + 1
             logger.info(f'Process {self.process_id}: Updated M to {self.M} (was {self.last_M})')
             self.send_to_neighbors()
-            self.unchanged_rounds = 0
-        else:
-            self.unchanged_rounds += 1
+        #     self.unchanged_rounds = 0
+        # else:
+        #     self.unchanged_rounds += 1
 
     def check_messages(self, timeout: float = 0.1):
         try:
@@ -116,7 +103,7 @@ class GGTProcess:
                 message = self.incoming_queue.get()
                 if message:
                     message_body = message.body.decode('utf-8')
-                    message_dict = self.parse_message(message_body)
+                    message_dict = self.message_parser.parse_message(message_body)
                     self.process_incoming_message(message_dict)
                     message.ack()
         # except rabbitpy.exceptions.TimeoutError:
@@ -124,7 +111,8 @@ class GGTProcess:
         except Exception as e:
             logger.error(f'Process {self.process_id}: Error checking messages: {e}')
 
-    def run(self, initial_wait: float = 15.0, max_iterations: int = 1000):
+    def run(self, initial_wait: float = 15.0):
+    # def run(self, initial_wait: float = 15.0, max_iterations: int = 1000):
         try:
             self.setup_rabbitmq()
             
@@ -137,18 +125,19 @@ class GGTProcess:
             self.send_to_neighbors()
             
             # Main message processing loop
-            iteration_count = 0
-            stable_iterations = 0
+            # iteration_count = 0
+            # stable_iterations = 0
             
-            while iteration_count < max_iterations and self.is_running:
+            # while iteration_count < max_iterations and self.is_running:
+            while self.is_running:
                 self.check_messages(timeout=0.1)
-                iteration_count += 1
+                # iteration_count += 1
                 
                 # Check for convergence (no changes for several iterations)
-                if self.last_M == self.M:
-                    stable_iterations += 1
-                else:
-                    stable_iterations = 0
+                # if self.last_M == self.M:
+                #     stable_iterations += 1
+                # else:
+                #     stable_iterations = 0
                 
                 # Optional: Add small delay to prevent busy-waiting
                 time.sleep(0.01)
@@ -196,7 +185,8 @@ def main():
         host=host
     )
     
-    process.run(initial_wait=15.0, max_iterations=1000)
+    # process.run(initial_wait=15.0, max_iterations=1000)
+    process.run(initial_wait=15.0)
 
 
 if __name__ == '__main__':
