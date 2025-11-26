@@ -30,7 +30,7 @@ class ClientStub:
                 pass
             self.sock = None
 
-    def execute(self, method: str, *args, **kwargs) -> Any:
+    def execute(self, method: str, *args) -> Any:
         self.connect()
 
         try:
@@ -41,7 +41,6 @@ class ClientStub:
                 "type": "request",
                 "method": method,
                 "args": list(args),
-                "kwargs": kwargs,
                 "request_id": request_id
             }
 
