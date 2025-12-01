@@ -1,22 +1,21 @@
 import json
 import time
-from venv import logger
 
+class GGTMessage:
+    def __init__(self, sender_id: int, value: int, msg_type: str = "value"):
+        self.sender_id = sender_id
+        self.value = value
+        self.type = msg_type
+        self.timestamp = time.time()
 
-class MessageParser:  
-    def create_message(self, message_type: str, value: int) -> str:
-        message = {
-            'type': message_type,
-            'sender_id': self.process_id,
-            'value': value,
-            'iteration': self.iteration,
-            'timestamp': time.time()
-        }
-        return json.dumps(message)
+    def to_json(self) -> str:
+        return json.dumps(self.__dict__)
 
-    def parse_message(self, message_body: str) -> dict:
-        try:
-            return json.loads(message_body)
-        except json.JSONDecodeError as e:
-            logger.error(f'Process {self.process_id}: Failed to parse message: {e}')
-            return None
+    @staticmethod
+    def from_json(text: str):
+        data = json.loads(text)
+        return GGTMessage(
+            sender_id=data["sender_id"],
+            value=data["value"],
+            msg_type=data["type"],
+        )
