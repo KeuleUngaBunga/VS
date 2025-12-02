@@ -1,5 +1,3 @@
-# ggt/process.py
-
 import time
 import datetime
 import logging
