@@ -15,6 +15,14 @@ class MessageBus:
             msg.publish(self.connector.exchange, f"process_{target_id}")
         except Exception as e:
             logger.error(f"Send error to {target_id}: {e}")
+            
+    def send_result(self, message):
+        try:
+            msg = rabbitpy.Message(self.connector.channel, message.to_json())
+            msg.properties["content_type"] = "application/json"
+            msg.publish(self.connector.exchange, "worker_result")
+        except Exception as e:
+            logger.error(f"Send error to result: {e}")
 
     def receive(self):
         if len(self.connector.queue) == 0:
@@ -34,7 +42,7 @@ class AgentMessageBus:
 
     def send_to_worker(self, agent_id: int, message):
         try:
-            msg = rabbitpy.Message(self.connector.channel, message.to_json())
+            msg = rabbitpy.Message(self.connector.worker_result_queue, message.to_json())
             msg.properties["content_type"] = "application/json"
             self.connector.exchange.publish(msg, f"agent_worker_{agent_id}")
         except Exception as e:
@@ -69,6 +77,17 @@ class CoordinatorMessageBus:
             return None
 
         msg = self.connector.agent_register_queue.get()
+        if msg:
+            data = msg.body.decode("utf-8")
+            msg.ack()
+            return data
+        return None
+    
+    def receive_result(self):
+        if len(self.connector.worker_result_queue) == 0:
+            return None
+
+        msg = self.connector.worker_result_queue.get()
         if msg:
             data = msg.body.decode("utf-8")
             msg.ack()

@@ -57,7 +57,6 @@ class AgentRabbitMQConnector:
         self.exchange = rabbitpy.Exchange(self.channel, "ggt_exchange", "direct")
         self.exchange.declare()
 
-        # Queue für Worker-Start-Befehle
         worker_queue_name = f"agent_worker_queue_{self.agent_id}"
         self.worker_queue = rabbitpy.Queue(self.channel, worker_queue_name)
         self.worker_queue.declare()
@@ -84,6 +83,7 @@ class CoordinatorRabbitMQConnector:
         self.channel = None
         self.exchange = None
         self.agent_register_queue = None
+        self.worker_result_queue = None
 
     def connect(self):
         self.connection = rabbitpy.Connection(f"amqp://guest:guest@{self.host}:5672/%2F")
@@ -92,10 +92,13 @@ class CoordinatorRabbitMQConnector:
         self.exchange = rabbitpy.Exchange(self.channel, "ggt_exchange", "direct")
         self.exchange.declare()
 
-        # Queue für Agent-Registrierung
         self.agent_register_queue = rabbitpy.Queue(self.channel, "coordinator_agent_register")
         self.agent_register_queue.declare()
         self.agent_register_queue.bind(self.exchange, "agent_register")
+        
+        self.worker_result_queue = rabbitpy.Queue(self.channel, "coordinator_worker_result")
+        self.worker_result_queue.declare()
+        self.worker_result_queue.bind(self.exchange, "worker_result")
 
         logger.info("Coordinator connected to RabbitMQ")
 
@@ -107,5 +110,7 @@ class CoordinatorRabbitMQConnector:
                 self.channel.close()
             if self.connection:
                 self.connection.close()
+            if self.worker_result_queue:
+                self.worker_result_queue.delete()
         except Exception as e:
             logger.error(f"Coordinator cleanup failed: {e}")

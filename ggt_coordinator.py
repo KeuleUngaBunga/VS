@@ -1,8 +1,3 @@
-
-
-# ============================================================================
-# ggt_coordinator.py
-# ============================================================================
 import sys
 import logging
 import time
@@ -27,12 +22,10 @@ class GGTCoordinator:
         self.connector.connect()
         logger.info("Coordinator started")
 
-        # Background thread für Agent-Registrierung
         import threading
         register_thread = threading.Thread(target=self.listen_for_agents, daemon=True)
         register_thread.start()
 
-        # CLI Loop
         try:
             self.cli_loop()
         except KeyboardInterrupt:
@@ -66,6 +59,11 @@ class GGTCoordinator:
                 if cmd.startswith("start "):
                     values = list(map(int, cmd.split()[1:]))
                     self.start_ggt(values)
+                    
+                    time.sleep(30)
+                    msg_raw = self.bus.receive_result()
+                    print(f"{msg_raw}")
+                    
 
                 elif cmd == "status":
                     print(f"Registered agents: {self.agents}")

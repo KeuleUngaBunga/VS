@@ -1,9 +1,3 @@
-
-
-
-# ============================================================================
-# ggt_agent.py
-# ============================================================================
 import sys
 import subprocess
 import logging
@@ -32,7 +26,6 @@ class GGTAgent:
         self.connector.connect()
         logger.info(f"Agent {self.id} started, waiting for worker start commands...")
         
-        # Agent registriert sich selbst
         self.register()
 
 
@@ -56,7 +49,6 @@ class GGTAgent:
             register_msg = rabbitpy.Message(self.connector.channel, msg.to_json())
             register_msg.properties["content_type"] = "application/json"
             register_msg.publish(self.connector.exchange, "agent_register")
-            # self.connector.exchange. (register_msg, "agent_register")
 
             logger.info(f"Agent {self.id}: Registered with coordinator")
         except Exception as e:

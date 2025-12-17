@@ -29,3 +29,11 @@ class MessageParser:
         except Exception as e:
             logger.error(f"Failed to parse WorkerStart message: {e}")
             return None
+        
+    @staticmethod
+    def parse_result(raw: str):
+        try:
+            return WorkerStartMessage.from_json(raw)
+        except Exception as e:
+            logger.error(f"Failed to parse WorkerStart message: {e}")
+            return None

@@ -18,7 +18,7 @@ class GGTProcess:
         self.connector = connector
         self.is_running = True
 
-    def start(self, initial_wait=15, convergence_time=60):
+    def start(self, initial_wait=5, convergence_time=15):
         self.connector.connect()
 
         logger.info(f"Process {self.id}: Waiting {initial_wait}s for others...")
@@ -43,8 +43,13 @@ class GGTProcess:
                 break
 
             time.sleep(0.01)
+            
+        m = self.algorithm.M
 
-        logger.info(f"Process {self.id}: Finished with M={self.algorithm.M}")
+        logger.info(f"Process {self.id}: Finished with M={m}")
+        msg = GGTMessage(sender_id=self.id, value=m)
+        self.bus.send_result(msg)
+        
         self.connector.cleanup()
 
     def broadcast_value(self):
