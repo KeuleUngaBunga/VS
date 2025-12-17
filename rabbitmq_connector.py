@@ -31,8 +31,6 @@ class RabbitMQConnector:
         try:
             if self.queue:
                 self.queue.delete()
-            if self.exchange:
-                self.exchange.delete()
             if self.channel:
                 self.channel.close()
             if self.connection:

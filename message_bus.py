@@ -84,12 +84,11 @@ class CoordinatorMessageBus:
         return None
     
     def receive_result(self):
-        if len(self.connector.worker_result_queue) == 0:
-            return None
+        last_data = None
+        while len(self.connector.worker_result_queue) > 0:
+            msg = self.connector.worker_result_queue.get()
+            if msg:
+                last_data = msg.body.decode("utf-8")
+                msg.ack()
 
-        msg = self.connector.worker_result_queue.get()
-        if msg:
-            data = msg.body.decode("utf-8")
-            msg.ack()
-            return data
-        return None
+        return last_data
