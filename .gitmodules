@@ -1,0 +1,6 @@
+[submodule "CaDSPracticalExamVS"]
+	path = CaDSPracticalExamVS
+	url = https://github.com/Transport-Protocol/CaDSPracticalExamVS.git
+[submodule "robot_arm/CaDSPracticalExamVS"]
+	path = robot_arm/CaDSPracticalExamVS
+	url = https://github.com/Transport-Protocol/CaDSPracticalExamVS.git
