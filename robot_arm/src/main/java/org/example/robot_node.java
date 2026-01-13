@@ -1,3 +1,5 @@
+package org.example;
+
 import org.cads.vs.roboticArm.hal.ICaDSRoboticArm;
 import org.cads.vs.roboticArm.hal.simulation.CaDSRoboticArmSimulation;
 import java.net.*;
@@ -8,6 +10,8 @@ import java.io.*;
 //javac -cp "CaDSPracticalExamVS/VSEclipseExampleProject/resources/libs/*" robot_node.java
 //run: mit module-path für javafx
 //java -cp "CaDSPracticalExamVS/VSEclipseExampleProject/resources/libs/*" --module-path "C:/Users\pfeif/openjfx-21.0.2_windows-x64_bin-sdk/javafx-sdk-21.0.2/lib" --add-modules=javafx.controls,javafx.fxml robot_node.java
+//java --module-path "C:/Users\pfeif/openjfx-21.0.2_windows-x64_bin-sdk/javafx-sdk-21.0.2/lib" --add-modules=javafx.controls,javafx.fxml robot_node.java
+
 public class robot_node {
     private ICaDSRoboticArm roboticArm;
 
@@ -26,7 +30,7 @@ public class robot_node {
                 roboticArm.setUpDownPercentageTo(val);
                 break;
             case "backForth":
-                roboticArm.setBackForthPercentageTo(val);   
+                roboticArm.setBackForthPercentageTo(val);
                 break;
             case "openClose":
                 roboticArm.setOpenClosePercentageTo(val);
@@ -37,7 +41,7 @@ public class robot_node {
         Thread.sleep(1000); // wait for movement to complete
     }
 
-    
+
 
     public static void main(String[] args) {
         try {
