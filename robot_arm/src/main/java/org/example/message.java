@@ -1,17 +1,27 @@
 package org.example;
 
 import com.google.gson.Gson;
+import com.google.gson.JsonObject;
 
 public class message {
     
-    public String send_register_Message(String name, String ip, int port) {
-        String jsonString ="{\"type\":\"register\",\"name\":\""+name+"\",\"ip\":\""+ip+"\",\"port\":"+port+"\",\"entity_type\":\"robot\"}";
-        return jsonString;
+    public JsonObject encode_register_Message(String name, String ip, int port) {
+        //String jsonString ="{\"type\":\"register\",\"name\":\""+name+"\",\"ip\":\""+ip+"\",\"port\":"+port+"\",\"entity_type\":\"robot\"}";
+        JsonObject register = new JsonObject();
+        register.addProperty("type", "register");
+        register.addProperty("name", name);
+        register.addProperty("ip", ip);
+        register.addProperty("port", port);
+        register.addProperty("entity_type", "robot");
+        return register;
     }
 
-    public String send_heartbeat_Message(String name) {
-        String jsonString ="{\"type\":\"heartbeat\",\"name\":\""+name+"\",\"entity_type\":\"robot\"}";
-        return jsonString;
+    public JsonObject encode_heartbeat_Message(String name) {
+        JsonObject heartbeat = new JsonObject();
+        heartbeat.addProperty("type", "heartbeat");
+        heartbeat.addProperty("name", name);
+        heartbeat.addProperty("entity_type", "robot");
+        return heartbeat;
     }
     public Response_Message decode_Response_Message(String jsonString) {
         Gson gson = new Gson();
