@@ -21,6 +21,7 @@ public class robot_node {
     }
 
     public void moveArm(String move, int val) throws InterruptedException {
+        System.out.println("Moving arm: " + move + " to " + val + "%");
         switch (move) {
             case "leftRight":
                 roboticArm.setLeftRightPercentageTo(val);

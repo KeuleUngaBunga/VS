@@ -7,6 +7,7 @@ import com.google.gson.JsonObject;
 
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.UnknownHostException;
 import java.util.concurrent.Executors;
 
 import java.util.concurrent.ScheduledExecutorService;
@@ -18,7 +19,7 @@ public class Main {
     public static void main(String[] args) {
         try {
             
-            connectHandler = new Connect_Handler("robot1", "localhost", 6000, "localhost", 7000);
+            connectHandler = new Connect_Handler("robot1", "10.8.0.8", 7000, "10.8.0.7", 6000);
             connectHandler.start();
 
 
@@ -122,17 +123,41 @@ class Connect_Handler {
        HEARTBEAT
        ===================== */
 
-    private void startHeartbeat() {
+    private void startHeartbeat() throws IOException {
+        //++++++++++++++++++++++++++++++++++++++++++++++
         scheduler.scheduleAtFixedRate(() -> {
             try {
+                serverSocket = new Socket(serverHost, serverPort);
+            } catch (UnknownHostException e) {
+                e.printStackTrace();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+                try {
+                    serverOut = new BufferedWriter(
+                            new OutputStreamWriter(serverSocket.getOutputStream()));
+                } catch (IOException e1) {
+                    e1.printStackTrace();
+                }
+                try {
+                    serverIn = new BufferedReader(
+                            new InputStreamReader(serverSocket.getInputStream()));
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                        //krise der try catch blöcke++++++++++++++++++++++++++
+            try {
+                //System.out.println("HEARTBEAT NOT SENT ");
+
                 JsonObject heartbeat = msg_handler.encode_heartbeat_Message(name);
                 sendToServer(heartbeat);
+                //System.out.println("HEARTBEAT SENT ");
 
                 // Status-Antwort lesen ------------ responses weird
                 String responseLine = serverIn.readLine();
                 Response_Message responseMessage = msg_handler.decode_Response_Message(responseLine);
 
-                System.out.println("HEARTBEAT STATUS: " + responseMessage.getStatus());//error handling?
+                System.out.println("HEARTBEAT STATUS: " + responseMessage.getStatus());
                 System.out.println("MESSAGE: " + responseMessage.getMessage());//timestamp
             } catch (IOException e) {
                 System.err.println("Heartbeat fehlgeschlagen");
@@ -174,6 +199,8 @@ class Connect_Handler {
                 JsonObject msg = gson.fromJson(line, JsonObject.class);
 
                 Action_Message actionMessage = msg_handler.decode_Action_Message(gson.toJson(msg));
+                System.out.println("Empfangene Aktion: " + actionMessage.getAction() +
+                                   " mit Wert: " + actionMessage.getValue());
                 try{
                     robot.moveArm(actionMessage.getAction(), actionMessage.getValue());
                 } catch (Exception e) {
