@@ -14,9 +14,10 @@ import org.cads.vs.roboticArm.hal.simulation.CaDSRoboticArmSimulation;
 public class robot_node {
     private ICaDSRoboticArm roboticArm;
 
-    public robot_node() {
-        //real oder sim
+    public robot_node(String roboticArmHostAddress, int roboticArmHostPort) {
+        //real 
         //roboticArm = new CaDSRoboticArmReal(roboticArmHostAddress, roboticArmHostPort);
+        //simulation
         roboticArm = new CaDSRoboticArmSimulation();
     }
 

@@ -7,7 +7,8 @@ import com.google.gson.JsonObject;
 
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.net.UnknownHostException;
+//import java.net.UnknownHostException;
+//import java.nio.Buffer;
 import java.util.concurrent.Executors;
 
 import java.util.concurrent.ScheduledExecutorService;
@@ -18,31 +19,20 @@ public class Main {
 
     public static void main(String[] args) {
         try {
+            //hardcoded values for testing
+            connectHandler = new Connect_Handler( "localhost", 7000, "localhost", 6000);
             
-            connectHandler = new Connect_Handler("robot1", "10.8.0.8", 7000, "10.8.0.7", 6000);
+            //interactive
+            /*
+            System.out.println("Geben Sie IPs und Ports für den Roboter und den Server  folgendermaßen ein: <Roboter-IP> <Roboter-Port> <Server-IP> <Server-Port>");
+            BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
+            String[] params = reader.readLine().split("\\s+");
+            connectHandler = new Connect_Handler( params[0], Integer.parseInt(params[1]), params[2], Integer.parseInt(params[3]));
+            */
+            
+            //start connection handler
             connectHandler.start();
 
-
-            //testing----------------------------------------------------
-            /** 
-            robot_node robot = new robot_node();
-            message msg_handler = new message();
-            Action_Message action = msg_handler.decode_Action_Message("{\"action\":\"leftRight\",\"value\":100}");
-
-            robot.moveArm(action.getAction(), action.getValue());
-             
-                System.out.println("Moving arm to 100% positions");
-                robot.moveArm("leftRight", 100);
-                robot.moveArm("upDown", 100);
-                robot.moveArm("backForth", 100);
-                robot.moveArm("openClose", 100);
-                Thread.sleep(6000);
-                System.out.println("Moving arm to 0% positions");
-                robot.moveArm("leftRight", 0);
-                robot.moveArm("upDown", 0);
-                robot.moveArm("backForth", 0);
-                robot.moveArm("openClose", 0);
-            */
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -57,7 +47,7 @@ public class Main {
 
 class Connect_Handler {
 
-    private final String name;
+    private String name;
     private final String ip;
     private final int port;
 
@@ -65,23 +55,19 @@ class Connect_Handler {
     private final int serverPort;
 
     private final Gson gson = new Gson();
-    private Socket serverSocket;
-    private BufferedWriter serverOut;
-    private BufferedReader serverIn;
     private message msg_handler = new message();
-    private robot_node robot = new robot_node();
+    private robot_node robot = new robot_node(null,0);
 
     private final ScheduledExecutorService scheduler =
-            Executors.newScheduledThreadPool(2);
+            Executors.newScheduledThreadPool(3);
 
-    public Connect_Handler(String name, String ip, int port,
+    public Connect_Handler(String ip, int port,
                      String serverHost, int serverPort) {
-        this.name = name;
         this.ip = ip;
         this.port = port;
         this.serverHost = serverHost;
         this.serverPort = serverPort;
-    }
+    }//name wird dynamisch bei der Registrierung gesetzt
 
     /* =====================
        START
@@ -91,81 +77,67 @@ class Connect_Handler {
         connectAndRegister();
         startHeartbeat();
         startIncomingServer();
+        listenForCommand();
     }
 
+    private void closeConnections(Socket serverSocket, BufferedWriter serverOut, BufferedReader serverIn) throws IOException {
+        serverIn.close();
+        serverOut.close();
+        serverSocket.close();
+    }
     /* =====================
        REGISTRIERUNG
        ===================== */
 
     private void connectAndRegister() throws IOException {
-        serverSocket = new Socket(serverHost, serverPort);
-        serverOut = new BufferedWriter(
+        Socket serverSocket = new Socket(serverHost, serverPort);
+        BufferedWriter serverOut = new BufferedWriter(
                 new OutputStreamWriter(serverSocket.getOutputStream()));
-        serverIn = new BufferedReader(
+        BufferedReader serverIn = new BufferedReader(
                 new InputStreamReader(serverSocket.getInputStream()));
-        try{
-            JsonObject register = msg_handler.encode_register_Message(name, ip, port);
+        String responseStatus;
+        try{//bis ein valider Name gewählt wurde versuchen zu registrieren
+            do{
+                System.out.println("Geben Sie den Namen des Roboters ein:");
+                BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
+                name = reader.readLine();
+                JsonObject register = msg_handler.encode_register_Message(name, ip, port);
 
-            sendToServer(register);
+                sendToServer(serverOut, register);
 
-            // Status-Antwort lesen ------------- responses weird
-            String responseLine = serverIn.readLine();
-            Response_Message responseMessage = msg_handler.decode_Response_Message(responseLine);
-
-            System.out.println("REGISTER STATUS: " + responseMessage.getStatus());//error handling?
-            System.out.println("MESSAGE: " + responseMessage.getMessage());
+                // Status-Antwort lesen 
+                responseStatus = recieveResponse(serverIn);
+            } while (!responseStatus.equals("ok"));
         } catch (IOException e) {
             System.err.println("Registrierung fehlgeschlagen");
         }
+        closeConnections(serverSocket, serverOut, serverIn);
     }
 
     /* =====================
        HEARTBEAT
        ===================== */
 
-    private void startHeartbeat() throws IOException {
-        //++++++++++++++++++++++++++++++++++++++++++++++
+    private void startHeartbeat() {
         scheduler.scheduleAtFixedRate(() -> {
-            try {
-                serverSocket = new Socket(serverHost, serverPort);
-            } catch (UnknownHostException e) {
-                e.printStackTrace();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-                try {
-                    serverOut = new BufferedWriter(
-                            new OutputStreamWriter(serverSocket.getOutputStream()));
-                } catch (IOException e1) {
-                    e1.printStackTrace();
-                }
-                try {
-                    serverIn = new BufferedReader(
-                            new InputStreamReader(serverSocket.getInputStream()));
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-                        //krise der try catch blöcke++++++++++++++++++++++++++
-            try {
-                //System.out.println("HEARTBEAT NOT SENT ");
-
+            try {//neue Verbindungen jedes mal, da server immer die connections schließt
+                Socket serverSocket = new Socket(serverHost, serverPort);
+                BufferedWriter serverOut = new BufferedWriter(
+                        new OutputStreamWriter(serverSocket.getOutputStream()));
+                BufferedReader serverIn = new BufferedReader(
+                        new InputStreamReader(serverSocket.getInputStream()));
                 JsonObject heartbeat = msg_handler.encode_heartbeat_Message(name);
-                sendToServer(heartbeat);
+                sendToServer(serverOut, heartbeat);
                 //System.out.println("HEARTBEAT SENT ");
-
-                // Status-Antwort lesen ------------ responses weird
-                String responseLine = serverIn.readLine();
-                Response_Message responseMessage = msg_handler.decode_Response_Message(responseLine);
-
-                System.out.println("HEARTBEAT STATUS: " + responseMessage.getStatus());
-                System.out.println("MESSAGE: " + responseMessage.getMessage());//timestamp
+                recieveResponse(serverIn);
+                closeConnections(serverSocket, serverOut, serverIn);
             } catch (IOException e) {
                 System.err.println("Heartbeat fehlgeschlagen");
             }
         }, 5, 5, TimeUnit.SECONDS);
     }
 
-    private synchronized void sendToServer(JsonObject json) throws IOException {
+    private synchronized void sendToServer(BufferedWriter serverOut, JsonObject json) throws IOException {
         serverOut.write(gson.toJson(json));
         serverOut.write("\n");
         serverOut.flush();
@@ -199,8 +171,7 @@ class Connect_Handler {
                 JsonObject msg = gson.fromJson(line, JsonObject.class);
 
                 Action_Message actionMessage = msg_handler.decode_Action_Message(gson.toJson(msg));
-                System.out.println("Empfangene Aktion: " + actionMessage.getAction() +
-                                   " mit Wert: " + actionMessage.getValue());
+                //System.out.println("Empfangene Aktion: " + actionMessage.getAction() + " mit Wert: " + actionMessage.getValue());//nur debug
                 try{
                     robot.moveArm(actionMessage.getAction(), actionMessage.getValue());
                 } catch (Exception e) {
@@ -213,5 +184,54 @@ class Connect_Handler {
             System.out.println("Python Client getrennt");
         }
     }
-}
 
+    private void listenForCommand() {//für Unregister -> zum beenden
+        scheduler.execute(() -> {
+            BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
+            String command;
+            try {
+                while ((command = reader.readLine()) != null) {
+                    System.out.println("Empfangener Befehl: " + command);
+                    if(command.equals("exit")){
+                        System.out.println("Sende Unregister Message und beende Programm...");
+                        // Unregister Message senden
+                        try {
+                            Socket serverSocket = new Socket(serverHost, serverPort);
+                            BufferedWriter serverOut = new BufferedWriter(
+                                    new OutputStreamWriter(serverSocket.getOutputStream()));
+                            BufferedReader serverIn = new BufferedReader(
+                                    new InputStreamReader(serverSocket.getInputStream()));
+                            JsonObject unregister = msg_handler.encode_unregister_Message(name);
+                            sendToServer(serverOut, unregister);
+                            recieveResponse(serverIn);
+                            closeConnections(serverSocket, serverOut, serverIn);
+                            scheduler.shutdown();
+                            System.exit(0);
+                        } catch (IOException e) {
+                            System.err.println("Unregistrierung fehlgeschlagen");
+                        }
+                        
+                    }
+                    // Hier können Sie den Befehl verarbeiten});
+                }
+            } catch (IOException e) {
+                System.out.println("Fehler beim Lesen des Befehls: " + e.getMessage());
+            }
+        });
+    } 
+
+    private String recieveResponse(BufferedReader serverIn){
+        Response_Message responseMessage;
+        // Status-Antwort lesen 
+        try {
+        String responseLine = serverIn.readLine();
+        responseMessage = msg_handler.decode_Response_Message(responseLine);
+        //System.out.println("STATUS: " + responseMessage.getStatus());
+        System.out.println("MESSAGE: " + responseMessage.getMessage());
+        return responseMessage.getStatus();
+        } catch (IOException e) {
+            System.err.println("Fehler beim Lesen der Serverantwort");
+            return null;
+        }
+    }
+}

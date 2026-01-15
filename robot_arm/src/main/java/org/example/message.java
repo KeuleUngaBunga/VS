@@ -6,13 +6,19 @@ import com.google.gson.JsonObject;
 public class message {
     
     public JsonObject encode_register_Message(String name, String ip, int port) {
-        //String jsonString ="{\"type\":\"register\",\"name\":\""+name+"\",\"ip\":\""+ip+"\",\"port\":"+port+"\",\"entity_type\":\"robot\"}";
         JsonObject register = new JsonObject();
         register.addProperty("type", "register");
         register.addProperty("name", name);
         register.addProperty("ip", ip);
         register.addProperty("port", port);
         register.addProperty("entity_type", "robot");
+        return register;
+    }
+
+    public JsonObject encode_unregister_Message(String name) {
+        JsonObject register = new JsonObject();
+        register.addProperty("type", "unregister");
+        register.addProperty("name", name);
         return register;
     }
 

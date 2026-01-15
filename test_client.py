@@ -3,7 +3,7 @@ import json
 import time
 
 JAVA_HOST = "localhost"
-JAVA_PORT = 6000  # muss mit Java RobotNode übereinstimmen
+JAVA_PORT = 7000  # muss mit Java RobotNode übereinstimmen
 
 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
     sock.connect((JAVA_HOST, JAVA_PORT))
