@@ -7,8 +7,6 @@ import com.google.gson.JsonObject;
 
 import java.net.ServerSocket;
 import java.net.Socket;
-//import java.net.UnknownHostException;
-//import java.nio.Buffer;
 import java.util.concurrent.Executors;
 
 import java.util.concurrent.ScheduledExecutorService;
@@ -20,15 +18,15 @@ public class Main {
     public static void main(String[] args) {
         try {
             //hardcoded values for testing
-            connectHandler = new Connect_Handler( "localhost", 7000, "localhost", 6000);
+            //connectHandler = new Connect_Handler( "localhost", 7000, "localhost", 6000);
             
             //interactive
-            /*
+            
             System.out.println("Geben Sie IPs und Ports für den Roboter und den Server  folgendermaßen ein: <Roboter-IP> <Roboter-Port> <Server-IP> <Server-Port>");
             BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
             String[] params = reader.readLine().split("\\s+");
             connectHandler = new Connect_Handler( params[0], Integer.parseInt(params[1]), params[2], Integer.parseInt(params[3]));
-            */
+            
             
             //start connection handler
             connectHandler.start();
@@ -90,28 +88,28 @@ class Connect_Handler {
        ===================== */
 
     private void connectAndRegister() throws IOException {
-        Socket serverSocket = new Socket(serverHost, serverPort);
-        BufferedWriter serverOut = new BufferedWriter(
-                new OutputStreamWriter(serverSocket.getOutputStream()));
-        BufferedReader serverIn = new BufferedReader(
-                new InputStreamReader(serverSocket.getInputStream()));
         String responseStatus;
         try{//bis ein valider Name gewählt wurde versuchen zu registrieren
-            do{
+            do{//für jeden versuchten Namen eine neue Verbindung
+                Socket serverSocket = new Socket(serverHost, serverPort);
+                BufferedWriter serverOut = new BufferedWriter(
+                        new OutputStreamWriter(serverSocket.getOutputStream()));
+                BufferedReader serverIn = new BufferedReader(
+                        new InputStreamReader(serverSocket.getInputStream()));
                 System.out.println("Geben Sie den Namen des Roboters ein:");
                 BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
                 name = reader.readLine();
-                JsonObject register = msg_handler.encode_register_Message(name, ip, port);
+                JsonObject register = msg_handler.encodeRegisterMessage(name, ip, port);
 
                 sendToServer(serverOut, register);
 
                 // Status-Antwort lesen 
                 responseStatus = recieveResponse(serverIn);
+                closeConnections(serverSocket, serverOut, serverIn);
             } while (!responseStatus.equals("ok"));
         } catch (IOException e) {
             System.err.println("Registrierung fehlgeschlagen");
         }
-        closeConnections(serverSocket, serverOut, serverIn);
     }
 
     /* =====================
@@ -126,7 +124,7 @@ class Connect_Handler {
                         new OutputStreamWriter(serverSocket.getOutputStream()));
                 BufferedReader serverIn = new BufferedReader(
                         new InputStreamReader(serverSocket.getInputStream()));
-                JsonObject heartbeat = msg_handler.encode_heartbeat_Message(name);
+                JsonObject heartbeat = msg_handler.encodeHeartbeatMessage(name);
                 sendToServer(serverOut, heartbeat);
                 //System.out.println("HEARTBEAT SENT ");
                 recieveResponse(serverIn);
@@ -170,7 +168,7 @@ class Connect_Handler {
             while ((line = in.readLine()) != null) {
                 JsonObject msg = gson.fromJson(line, JsonObject.class);
 
-                Action_Message actionMessage = msg_handler.decode_Action_Message(gson.toJson(msg));
+                Action_Message actionMessage = msg_handler.decodeActionMessage(gson.toJson(msg));
                 //System.out.println("Empfangene Aktion: " + actionMessage.getAction() + " mit Wert: " + actionMessage.getValue());//nur debug
                 try{
                     robot.moveArm(actionMessage.getAction(), actionMessage.getValue());
@@ -201,7 +199,7 @@ class Connect_Handler {
                                     new OutputStreamWriter(serverSocket.getOutputStream()));
                             BufferedReader serverIn = new BufferedReader(
                                     new InputStreamReader(serverSocket.getInputStream()));
-                            JsonObject unregister = msg_handler.encode_unregister_Message(name);
+                            JsonObject unregister = msg_handler.encodeUnregisterMessage(name);
                             sendToServer(serverOut, unregister);
                             recieveResponse(serverIn);
                             closeConnections(serverSocket, serverOut, serverIn);
@@ -225,7 +223,7 @@ class Connect_Handler {
         // Status-Antwort lesen 
         try {
         String responseLine = serverIn.readLine();
-        responseMessage = msg_handler.decode_Response_Message(responseLine);
+        responseMessage = msg_handler.decodeResponseMessage(responseLine);
         //System.out.println("STATUS: " + responseMessage.getStatus());
         System.out.println("MESSAGE: " + responseMessage.getMessage());
         return responseMessage.getStatus();

@@ -5,7 +5,7 @@ import com.google.gson.JsonObject;
 
 public class message {
     
-    public JsonObject encode_register_Message(String name, String ip, int port) {
+    public JsonObject encodeRegisterMessage(String name, String ip, int port) {
         JsonObject register = new JsonObject();
         register.addProperty("type", "register");
         register.addProperty("name", name);
@@ -15,26 +15,26 @@ public class message {
         return register;
     }
 
-    public JsonObject encode_unregister_Message(String name) {
+    public JsonObject encodeUnregisterMessage(String name) {
         JsonObject register = new JsonObject();
         register.addProperty("type", "unregister");
         register.addProperty("name", name);
         return register;
     }
 
-    public JsonObject encode_heartbeat_Message(String name) {
+    public JsonObject encodeHeartbeatMessage(String name) {
         JsonObject heartbeat = new JsonObject();
         heartbeat.addProperty("type", "heartbeat");
         heartbeat.addProperty("name", name);
         heartbeat.addProperty("entity_type", "robot");
         return heartbeat;
     }
-    public Response_Message decode_Response_Message(String jsonString) {
+    public Response_Message decodeResponseMessage(String jsonString) {
         Gson gson = new Gson();
         Response_Message responseMessage = gson.fromJson(jsonString, Response_Message.class);
         return responseMessage;
     }
-    public Action_Message decode_Action_Message(String jsonString) {
+    public Action_Message decodeActionMessage(String jsonString) {
         Gson gson = new Gson();
         Action_Message actionMessage = gson.fromJson(jsonString, Action_Message.class);
         return actionMessage;
@@ -56,10 +56,7 @@ class Response_Message {
 class Action_Message {
     private String action;
     private int value;
-    public Action_Message(String action, int value) {//constructor for testing
-        this.action = action;
-        this.value = value;
-    }
+    
     public String getAction() {
         return action;
     }

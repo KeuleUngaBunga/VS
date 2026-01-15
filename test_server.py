@@ -24,17 +24,25 @@ def handle_client(conn, addr):
 
         if msg_type == "register":
             name = msg["name"]
-            robots[name] = {
+
+
+            if(name in robots):
+                print(f"Aktueller registrierter Roboter: {name}")
+                response = {
+                    "status": "error",
+                    "message": "robot already registered"
+                }
+            else:
+                robots[name] = {
                 "ip": msg["ip"],
                 "port": msg["port"]
-            }
+                }
+                print(f"REGISTER: {name} @ {robots[name]}")
 
-            print(f"REGISTER: {name} @ {robots[name]}")
-
-            response = {
-                "status": "ok",
-                "message": "registered successfully"
-            }
+                response = {
+                    "status": "ok",
+                    "message": "registered successfully"
+                }
             conn.sendall((json.dumps(response) + "\n").encode())
 
         elif msg_type == "heartbeat":
