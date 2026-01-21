@@ -67,9 +67,7 @@ class Connect_Handler {
         this.serverPort = serverPort;
     }//name wird dynamisch bei der Registrierung gesetzt
 
-    /* =====================
-       START
-       ===================== */
+       //START
 
     public void start() throws IOException {
         connectAndRegister();
@@ -83,9 +81,9 @@ class Connect_Handler {
         serverOut.close();
         serverSocket.close();
     }
-    /* =====================
-       REGISTRIERUNG
-       ===================== */
+  
+    //REGISTRIERUNG
+    
 
     private void connectAndRegister() throws IOException {
         String responseStatus;
@@ -112,9 +110,7 @@ class Connect_Handler {
         }
     }
 
-    /* =====================
-       HEARTBEAT
-       ===================== */
+    //HEARTBEAT
 
     private void startHeartbeat() {
         scheduler.scheduleAtFixedRate(() -> {
@@ -141,9 +137,7 @@ class Connect_Handler {
         serverOut.flush();
     }
 
-    /* =====================
-       INCOMING PYTHON CLIENTS
-       ===================== */
+    //INCOMING PYTHON CLIENTS
 
     private void startIncomingServer() {
         scheduler.execute(() -> {
