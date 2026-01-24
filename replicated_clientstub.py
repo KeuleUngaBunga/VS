@@ -1,14 +1,14 @@
 import socket
-from typing import Any
+from typing import Any, List, Tuple
 
 from datastore import Datastore
 from exception import NetworkException, RemoteException
 from message_serializer import MessageSerializer
 
 
-class ClientStub:
+class ReplicatedClientStub:
 
-    def __init__(self, host: str, port: int):
+    def __init__(self, host, port):
         self.host = host
         self.port = port
         self.sock = None
@@ -66,11 +66,52 @@ class ClientStub:
 
 class DatastoreStub(Datastore):
 
-    def __init__(self, client_stub: ClientStub):
-        self.client_stub = client_stub
-
+    def __init__(self, servers: list[tuple[str, int]]):
+        self.clients = [
+            ReplicatedClientStub(host, port) for host, port in servers
+        ]
+        self._rr_index = 0
+        
+    
+    
     def write(self, index: int, data: str) -> None:
-        self.client_stub.execute("write", index, data)
+        failed = []
+
+        for client in self.clients:
+            try:
+                client.execute("write", index, data)
+            except NetworkException:
+                failed.append(client)
+            except RemoteException:
+                failed.append(client)
+
+        for f in failed:
+            if f in self.clients:
+                self.clients.remove(f)
+
+        if not self.clients:
+            raise NetworkException("Keine Server")
+
 
     def read(self, index: int) -> str:
-        return self.client_stub.execute("read", index)
+        if not self.clients:
+            raise NetworkException("Keine Server")
+
+        attempts = len(self.clients)
+        self._rr_index = 0
+        for _ in range(attempts):
+            client = self.clients[self._rr_index]
+            self._rr_index = (self._rr_index + 1) % len(self.clients)
+
+            try:
+                return client.execute("read", index)
+            except NetworkException:
+                self.clients.remove(client)
+            except RemoteException:
+                raise
+
+        raise NetworkException("Keine Server")
+    
+    def close(self):
+        for client in self.clients:
+            client.close()
